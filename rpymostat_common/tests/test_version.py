@@ -35,10 +35,9 @@ Jason Antman <jason@jasonantman.com> <http://www.jasonantman.com>
 ##################################################################################
 """
 
-import rpymostat-common.version as version
+import rpymostat_common.version as version
 
 import re
-import sys
 
 
 class TestVersion(object):

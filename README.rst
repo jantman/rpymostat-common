@@ -23,35 +23,10 @@ rpymostat-common
    :alt: Project Status: Active - The project has reached a stable, usable state and is being actively developed.
    :target: http://www.repostatus.org/#active
 
-Introduction here.
+Common libraries shared by packages in the `RPyMostat <https://github.com/jantman/RPyMostat>`_ project.
 
-Requirements
-------------
-
-* Python 2.7+ (currently tested with 2.7, 3.2, 3.3, 3.4)
-* Python `VirtualEnv <http://www.virtualenv.org/>`_ and ``pip`` (recommended installation method; your OS/distribution should have packages for these)
-
-Installation
-------------
-
-It's recommended that you install into a virtual environment (virtualenv /
-venv). See the `virtualenv usage documentation <http://www.virtualenv.org/en/latest/>`_
-for information on how to create a venv. If you really want to install
-system-wide, you can (using sudo).
-
-.. code-block:: bash
-
-    pip install rpymostat-common
-
-Configuration
--------------
-
-Something here.
-
-Usage
------
-
-Something else here.
+This package should not need to be installed on its own; it exists solely to package
+shared dependencies for other parts of RPyMostat.
 
 Bugs and Feature Requests
 -------------------------
@@ -70,10 +45,10 @@ To install for development:
 
 .. code-block:: bash
 
-    $ virtualenv rpymostat-common
-    $ cd rpymostat-common && source bin/activate
-    $ pip install -e git+git@github.com:YOURNAME/rpymostat-common.git@BRANCHNAME#egg=rpymostat-common
-    $ cd src/rpymostat-common
+    $ git clone git@github.com:YOURNAME/rpymostat-common.git
+    $ cd rpymostat-common
+    $ virtualenv . && source bin/activate
+    $ python setup.py develop
 
 The git clone you're now in will probably be checked out to a specific commit,
 so you may want to ``git checkout BRANCHNAME``.

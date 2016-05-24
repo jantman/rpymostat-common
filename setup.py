@@ -37,7 +37,7 @@ Jason Antman <jason@jasonantman.com> <http://www.jasonantman.com>
 
 from setuptools import setup, find_packages
 from sys import version_info
-from rpymostat-common.version import VERSION, PROJECT_URL
+from rpymostat_common.version import VERSION, PROJECT_URL
 
 with open('README.rst') as file:
     long_description = file.read()
@@ -59,9 +59,9 @@ setup(
     author_email='jason@jasonantman.com',
     packages=find_packages(),
     url=PROJECT_URL,
-    description='Description here.',
+    description='Common libraries shared by packages in the RPyMostat project.',
     long_description=long_description,
-    install_requires=requires,
-    keywords="",
+    #install_requires=requires,
+    keywords="rpymostat",
     classifiers=classifiers
 )
