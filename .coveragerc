@@ -1,7 +1,7 @@
 [run]
 branch = True
 omit = lib/*
-       rpymostat-common/tests/*
+       rpymostat_common/tests/*
        setup.py
 
 [report]
