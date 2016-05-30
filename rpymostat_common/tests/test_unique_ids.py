@@ -84,7 +84,7 @@ class TestSystemID(object):
         assert res == 'uuidgetnode'
         assert mock_logger.mock_calls == [
             call.debug('Exception encountered when trying to determine system '
-                       'ID via method %s: %s', 'random_fallback', exc_info=1),
+                       'ID via method %s', 'random_fallback', exc_info=1),
             call.debug('Determined SystemID via method %s', 'uuid_getnode'),
             call.debug('Host ID: %s', 'uuidgetnode')
         ]
@@ -113,3 +113,9 @@ class TestSystemID(object):
             call.debug('Determined SystemID via method %s', 'random_fallback'),
             call.debug('Host ID: %s', 'fallback')
         ]
+
+    def test_uuid_getnode(self):
+        with patch('%s.uuid.getnode' % pbm, autospec=True) as mock_getnode:
+            mock_getnode.return_value = 163683361899416L
+            res = self.cls.uuid_getnode()
+        assert res == 'uuid.getnode_94de80a44398'

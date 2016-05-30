@@ -121,9 +121,9 @@ class SystemID(object):
                     id_str = s
                     logger.debug('Determined SystemID via method %s', meth_name)
                     break
-            except Exception as ex:
+            except Exception:
                 logger.debug('Exception encountered when trying to determine '
-                             'system ID via method %s: %s', meth_name,
+                             'system ID via method %s', meth_name,
                              exc_info=1)
         # use the fallback
         if id_str is None:
@@ -178,7 +178,7 @@ class SystemID(object):
         :return: hardware system ID from Python's :py:meth:`uuid.getnode`
         :rtype: str
         """
-        return 'uuid.getnode_' + uuid.getnode().hex
+        return 'uuid.getnode_%x' % uuid.getnode()
 
     def random_fallback(self):
         """
