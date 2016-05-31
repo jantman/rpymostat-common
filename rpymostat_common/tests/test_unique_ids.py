@@ -36,7 +36,7 @@ Jason Antman <jason@jasonantman.com> <http://www.jasonantman.com>
 """
 
 import sys
-
+from textwrap import dedent
 from rpymostat_common.unique_ids import SystemID
 
 # https://code.google.com/p/mock/issues/detail?id=249
@@ -45,9 +45,9 @@ if (
         sys.version_info[0] < 3 or
         sys.version_info[0] == 3 and sys.version_info[1] < 4
 ):
-    from mock import patch, call, Mock, DEFAULT  # noqa
+    from mock import patch, call, Mock, DEFAULT, mock_open  # noqa
 else:
-    from unittest.mock import patch, call, Mock, DEFAULT  # noqa
+    from unittest.mock import patch, call, Mock, DEFAULT, mock_open  # noqa
 
 pbm = 'rpymostat_common.unique_ids'
 pb = '%s.SystemID' % pbm
@@ -93,7 +93,6 @@ class TestSystemID(object):
 
         self.cls.id_methods = [
             'raspberrypi_cpu',
-            'random_fallback',
             'uuid_getnode'
         ]
         with patch('%s.logger' % pbm, autospec=True) as mock_logger:
@@ -110,7 +109,7 @@ class TestSystemID(object):
                 res = self.cls.id_string
         assert res == 'fallback'
         assert mock_logger.mock_calls == [
-            call.debug('Determined SystemID via method %s', 'random_fallback'),
+            call.debug('Determined SystemID via method random_fallback'),
             call.debug('Host ID: %s', 'fallback')
         ]
 
@@ -119,3 +118,189 @@ class TestSystemID(object):
             mock_getnode.return_value = 163683361899416L
             res = self.cls.uuid_getnode()
         assert res == 'uuid.getnode_94de80a44398'
+
+    def test_random_fallback(self):
+        mock_uuid = Mock(hex='1234abcd')
+        with patch('%s.logger' % pbm, autospec=True) as mock_logger:
+            with patch('%s.uuid.uuid4' % pbm, autospec=True) as mock_uuid4:
+                mock_uuid4.return_value = mock_uuid
+                res = self.cls.random_fallback()
+        assert res == '1234abcd'
+        assert mock_uuid4.mock_calls == [call()]
+        assert mock_logger.mock_calls == [
+            call.warning('Could not determine system ID with any concrete '
+                         'method; using a random UUID.')
+        ]
+
+    def test_raspberrypi_cpu_no_hw(self):
+        content = dedent("""
+        processor       : 0
+        vendor_id       : GenuineIntel
+        cpu family      : 6
+        model           : 58
+        model name      : Intel(R) Core(TM) i7-3770 CPU @ 3.40GHz
+        stepping        : 9
+        microcode       : 0x12
+        cpu MHz         : 1680.078
+        cache size      : 8192 KB
+        physical id     : 0
+        siblings        : 8
+        core id         : 0
+        cpu cores       : 4
+        apicid          : 0
+        initial apicid  : 0
+        fpu             : yes
+        fpu_exception   : yes
+        cpuid level     : 13
+        wp              : yes
+        flags           : fpu vme de pse tsc msr pae mce cx8 apic
+        bugs            :
+        bogomips        : 6809.27
+        clflush size    : 64
+        cache_alignment : 64
+        address sizes   : 36 bits physical, 48 bits virtual
+        power management:
+        """)
+        with patch('%s.logger' % pbm, autospec=True) as mock_logger:
+            with patch('%s.open' % pbm, mock_open(read_data=content),
+                       create=True) as mock_opn:
+                res = self.cls.raspberrypi_cpu()
+        assert res is None
+        assert mock_logger.mock_calls == [
+            call.debug('Not RPi - hw_match is None')
+        ]
+        assert mock_opn.mock_calls == [
+            call('/proc/cpuinfo', 'r'),
+            call().__enter__(),
+            call().read(),
+            call().__exit__(None, None, None)
+        ]
+
+    def test_raspberrypi_cpu_other_hw(self):
+        content = dedent("""
+        processor       : 0
+        model name      : ARMv6-compatible processor rev 7 (v6l)
+        BogoMIPS        : 2.42
+        Features        : half thumb fastmult vfp edsp java tls
+        CPU implementer : 0x41
+        CPU architecture: 7
+        CPU variant     : 0x0
+        CPU part        : 0xb76
+        CPU revision    : 7
+
+        Hardware        : BCM2701
+        Revision        : 000e
+        Serial          : 00000000ae463475
+        """)
+        with patch('%s.logger' % pbm, autospec=True) as mock_logger:
+            with patch('%s.open' % pbm, mock_open(read_data=content),
+                       create=True) as mock_opn:
+                res = self.cls.raspberrypi_cpu()
+        assert res is None
+        assert mock_logger.mock_calls == [
+            call.debug('Not RPi (Hardware: %s)', 'BCM2701')
+        ]
+        assert mock_opn.mock_calls == [
+            call('/proc/cpuinfo', 'r'),
+            call().__enter__(),
+            call().read(),
+            call().__exit__(None, None, None)
+        ]
+
+    def test_raspberrypi_cpu_B2(self):
+        content = dedent("""
+        processor       : 0
+        model name      : ARMv6-compatible processor rev 7 (v6l)
+        BogoMIPS        : 2.42
+        Features        : half thumb fastmult vfp edsp java tls
+        CPU implementer : 0x41
+        CPU architecture: 7
+        CPU variant     : 0x0
+        CPU part        : 0xb76
+        CPU revision    : 7
+
+        Hardware        : BCM2708
+        Revision        : 000e
+        Serial          : 00000000ae463475
+        """)
+        with patch('%s.logger' % pbm, autospec=True) as mock_logger:
+            with patch('%s.open' % pbm, mock_open(read_data=content),
+                       create=True) as mock_opn:
+                res = self.cls.raspberrypi_cpu()
+        assert res == 'RaspberryPi/B 2.0 512MB (Q4 2012 Sony)/ae463475'
+        assert mock_logger.mock_calls == [
+            call.debug(
+                'Appears to be a Raspberry Pi (Hardware: %s)', 'BCM2708'
+            )
+        ]
+        assert mock_opn.mock_calls == [
+            call('/proc/cpuinfo', 'r'),
+            call().__enter__(),
+            call().read(),
+            call().__exit__(None, None, None)
+        ]
+
+    def test_raspberrypi_cpu_no_rev(self):
+        content = dedent("""
+        processor       : 0
+        model name      : ARMv6-compatible processor rev 7 (v6l)
+        BogoMIPS        : 2.42
+        Features        : half thumb fastmult vfp edsp java tls
+        CPU implementer : 0x41
+        CPU architecture: 7
+        CPU variant     : 0x0
+        CPU part        : 0xb76
+        CPU revision    : 7
+
+        Hardware        : BCM2708
+        Serial          : 00000000ae463475
+        """)
+        with patch('%s.logger' % pbm, autospec=True) as mock_logger:
+            with patch('%s.open' % pbm, mock_open(read_data=content),
+                       create=True) as mock_opn:
+                res = self.cls.raspberrypi_cpu()
+        assert res == 'RaspberryPi/unknown_model/ae463475'
+        assert mock_logger.mock_calls == [
+            call.debug(
+                'Appears to be a Raspberry Pi (Hardware: %s)', 'BCM2708'
+            )
+        ]
+        assert mock_opn.mock_calls == [
+            call('/proc/cpuinfo', 'r'),
+            call().__enter__(),
+            call().read(),
+            call().__exit__(None, None, None)
+        ]
+
+    def test_raspberrypi_cpu_unknown_rev(self):
+        content = dedent("""
+        processor       : 0
+        model name      : ARMv6-compatible processor rev 7 (v6l)
+        BogoMIPS        : 2.42
+        Features        : half thumb fastmult vfp edsp java tls
+        CPU implementer : 0x41
+        CPU architecture: 7
+        CPU variant     : 0x0
+        CPU part        : 0xb76
+        CPU revision    : 7
+
+        Hardware        : BCM2708
+        Revision        : fefe
+        Serial          : 00000000ae463475
+        """)
+        with patch('%s.logger' % pbm, autospec=True) as mock_logger:
+            with patch('%s.open' % pbm, mock_open(read_data=content),
+                       create=True) as mock_opn:
+                res = self.cls.raspberrypi_cpu()
+        assert res == 'RaspberryPi/model_fefe/ae463475'
+        assert mock_logger.mock_calls == [
+            call.debug(
+                'Appears to be a Raspberry Pi (Hardware: %s)', 'BCM2708'
+            )
+        ]
+        assert mock_opn.mock_calls == [
+            call('/proc/cpuinfo', 'r'),
+            call().__enter__(),
+            call().read(),
+            call().__exit__(None, None, None)
+        ]

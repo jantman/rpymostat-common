@@ -128,6 +128,7 @@ class SystemID(object):
         # use the fallback
         if id_str is None:
             id_str = self.random_fallback()
+            logger.debug('Determined SystemID via method random_fallback')
         logger.debug('Host ID: %s', id_str)
         return id_str
 
@@ -155,7 +156,7 @@ class SystemID(object):
             logger.debug('Not RPi - hw_match is None')
             return None
         if hw_match.group(1) not in self.rpi_hardware:
-            logger.debug('Not RPi - Hardware: %s', hw_match.group(1))
+            logger.debug('Not RPi (Hardware: %s)', hw_match.group(1))
             return None
         logger.debug('Appears to be a Raspberry Pi (Hardware: %s)',
                      hw_match.group(1))
