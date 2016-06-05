@@ -38,7 +38,9 @@ Jason Antman <jason@jasonantman.com> <http://www.jasonantman.com>
 import sys
 import pkg_resources
 
-from rpymostat_common.loader import load_classes
+from rpymostat_common.loader import (
+    load_classes, _get_varnames, _parse_docstring, list_classes
+)
 
 # https://code.google.com/p/mock/issues/detail?id=249
 # py>=3.4 should use unittest.mock not the mock package on pypi
@@ -46,11 +48,48 @@ if (
         sys.version_info[0] < 3 or
         sys.version_info[0] == 3 and sys.version_info[1] < 4
 ):
-    from mock import patch, call, Mock, DEFAULT, mock_open  # noqa
+    from mock import patch, call, Mock, DEFAULT, mock_open, MagicMock  # noqa
 else:
-    from unittest.mock import patch, call, Mock, DEFAULT, mock_open  # noqa
+    from unittest.mock import patch, call, Mock, DEFAULT, mock_open, MagicMock  # noqa
 
 pbm = 'rpymostat_common.loader'
+
+
+class BaseClass(object):
+    pass
+
+
+class TestClass(BaseClass):
+
+    _description = 'foo desc'
+
+    def __init__(self, argOne, argTwo, kwarg1=None, kwarg2=1234):
+        """
+        Some text here
+        About the init function
+
+        Foo
+
+        Bar.
+
+        :param argOne: arg one info
+        :type argOne: str
+        :param argTwo: arg two info is a
+          long
+          line
+        :type arg2: int
+        :param kwarg1: kwarg1 info
+        :type kwarg1: str
+        :param kwarg2: kwarg2 info
+        :return: foo
+        """
+        pass
+
+    def sensors_present(self):
+        return True
+
+    def read(self):
+        return {}
 
 
 class TestLoader(object):
@@ -156,3 +195,164 @@ class TestLoader(object):
             call.debug("%s classes loaded successfully for entrypoint %s: %s",
                        2, 'my.entrypoint', ['EP1', 'EP3'])
         ]
+
+    def test_get_varnames(self):
+        docstr = {
+            'params': {
+                'argOne': 'arg one info',
+                'argTwo': 'arg two info is a long line',
+                'kwarg1': 'kwarg1 info',
+            },
+            'types': {
+                'argOne': 'str',
+                'argTwo': 'int',
+                'kwarg1': 'str'
+            }
+        }
+        ds = """
+        Some text here
+        About the init function
+
+        Foo
+
+        Bar.
+
+        :param argOne: arg one info
+        :type argOne: str
+        :param argTwo: arg two info is a
+          long
+          line
+        :type arg2: int
+        :param kwarg1: kwarg1 info
+        :type kwarg1: str
+        :param kwarg2: kwarg2 info
+        :return: foo
+        """
+        with patch('%s._parse_docstring' % pbm) as mock_pd:
+            mock_pd.return_value = docstr
+            res = _get_varnames(TestClass)
+        assert mock_pd.mock_calls == [call(ds)]
+        assert res == {
+            'argOne': '(str) arg one info',
+            'argTwo': '(int) arg two info is a long line',
+            'kwarg1=None': '(str) kwarg1 info',
+            'kwarg2=1234': ''
+        }
+
+    def test_get_varnames_kwargs_only(self):
+
+        class Foo(object):
+
+            def __init__(self, foo=1, bar='two'):
+                """mystr"""
+                pass
+
+        docstr = {
+            'params': {
+                'foo': 'arg one info',
+                'bar': 'arg two info is a long line',
+            },
+            'types': {
+                'foo': 'str',
+            }
+        }
+        with patch('%s._parse_docstring' % pbm) as mock_pd:
+            mock_pd.return_value = docstr
+            res = _get_varnames(Foo)
+        assert mock_pd.mock_calls == [call('mystr')]
+        assert res == {
+            'foo=1': '(str) arg one info',
+            'bar=two': 'arg two info is a long line'
+        }
+
+    def test_get_varnames_no_default(self):
+
+        class Foo(object):
+
+            def __init__(self, arg1, arg2):
+                """foo"""
+                pass
+
+        docstr = {
+            'params': {
+                'arg1': 'arg one info'
+            },
+            'types': {
+                'arg1': 'str'
+            }
+        }
+        with patch('%s._parse_docstring' % pbm) as mock_pd:
+            mock_pd.return_value = docstr
+            res = _get_varnames(Foo)
+        assert mock_pd.mock_calls == [call("foo")]
+        assert res == {
+            'arg1': '(str) arg one info',
+            'arg2': '',
+        }
+
+    def test_parse_docstring(self):
+        docstring = """
+        Some text here
+        About the init function
+
+        Foo
+
+        Bar.
+
+        :param argOne: arg one info
+        :type argOne: str
+        :param argTwo: arg two info is a
+          long
+          line
+        :type argTwo: int
+        :param kwarg1: kwarg1 info
+        :type kwarg1: str
+        :param kwarg2: kwarg2 info
+        :return: foo
+        """
+        res = _parse_docstring(docstring)
+        assert res == {
+            'params': {
+                'argOne': 'arg one info',
+                'argTwo': 'arg two info is a long line',
+                'kwarg1': 'kwarg1 info',
+                'kwarg2': 'kwarg2 info'
+            },
+            'types': {
+                'argOne': 'str',
+                'argTwo': 'int',
+                'kwarg1': 'str'
+            }
+        }
+
+    def test_list_classes(self, capsys):
+        varnames_one = {
+            'argOne': '(int) arg one info',
+            'argTwo': 'arg two info',
+            'kwarg1=foo': '(str) kwarg1 info'
+        }
+
+        m1 = MagicMock(__name__='clsone', _description='desc1')
+        m2 = MagicMock(__name__='cls2', _description='desc2')
+        m3 = MagicMock(__name__='cls3')
+        del(m3._description)
+
+        def se_gv(klass):
+            if klass == m1:
+                return varnames_one
+            return {}
+
+        with patch('%s._get_varnames' % pbm) as mock_gv:
+            mock_gv.side_effect = se_gv
+            list_classes([m1, m2, m3])
+        assert mock_gv.mock_calls == [call(m1), call(m2), call(m3)]
+        expected_out = "clsone (desc1)\n"
+        expected_out += "    argOne - (int) arg one info\n"
+        expected_out += "    argTwo - arg two info\n"
+        expected_out += "    kwarg1=foo - (str) kwarg1 info\n"
+        expected_out += "\n"
+        expected_out += "cls2 (desc2)\n\n"
+        expected_out += "cls3\n\n"
+        out, err = capsys.readouterr()
+        assert err == ''
+        assert out == expected_out

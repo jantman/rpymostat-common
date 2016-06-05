@@ -37,6 +37,7 @@ Jason Antman <jason@jasonantman.com> <http://www.jasonantman.com>
 
 import logging
 import pkg_resources
+import re
 
 logger = logging.getLogger(__name__)
 
@@ -73,3 +74,99 @@ def load_classes(entrypoint_name, superclass=None):
     logger.debug("%s classes loaded successfully for entrypoint %s: %s",
                  len(classes), entrypoint_name, [c.__name__ for c in classes])
     return classes
+
+
+def list_classes(classes):
+    """
+    Given a list of class objects, print their names, along with their
+    _description attributes (if present) and any arguments they accept. Used in
+    building dynamic CLI help.
+    """
+    for cls in classes:
+        if hasattr(cls, '_description'):
+            print('%s (%s)' % (cls.__name__, cls._description))
+        else:
+            print(cls.__name__)
+        v = _get_varnames(cls)
+        if len(v) == 0:
+            print("")
+            continue
+        for vname in sorted(v.keys()):
+            print("    %s - %s" % (vname, v[vname]))
+        print("")
+
+
+def _parse_docstring(docstring):
+    """
+    Given a docstring, attempt to parse out all ``:param foo:`` and
+    ``:type foo:`` directives and their matching strings, collapsing
+    whitespace. Return a dict of keys 'params' and 'types', each being a
+    dict of name to string.
+
+    :param docstring: docstring to parse
+    :type docstring: str
+    :rtype: dict
+    """
+    param_re = re.compile(
+        r'^\s*:param ([^:]+):((?:(?!:param|:type|:return|:rtype).)*)',
+        re.S | re.M
+    )
+    type_re = re.compile(
+        r'^\s*:type ([^:]+):((?:(?!:param|:type|:return|:rtype).)*)',
+        re.S | re.M
+    )
+    whitespace_re = re.compile(r'\s+')
+
+    res = {'params': {}, 'types': {}}
+
+    for itm in param_re.finditer(docstring):
+        res['params'][itm.group(1).strip()] = whitespace_re.sub(
+            ' ', itm.group(2).strip())
+    for itm in type_re.finditer(docstring):
+        res['types'][itm.group(1).strip()] = whitespace_re.sub(
+            ' ', itm.group(2).strip())
+    return res
+
+
+def _get_varnames(klass):
+    """
+    Return a dict of variable names that klass's init method takes,
+    to string descriptions of them (if present).
+
+    :param klass: the class to get varnames for (from its __init__ method)
+    :type klass: abc.ABCMeta
+    :return: dict
+    """
+    func = klass.__init__.im_func
+    res = {}
+    args = []
+    kwargs = {}
+    if func.func_defaults is not None and len(func.func_defaults) > 0:
+        if len(func.func_defaults) >= len(func.func_code.co_varnames)-1:
+            args = []
+            kwarg_names = func.func_code.co_varnames[1:]
+        else:
+            args = func.func_code.co_varnames[1:len(func.func_defaults)+1]
+            kwarg_names = func.func_code.co_varnames[
+                          len(func.func_defaults)+1:
+            ]
+        for x, _default in enumerate(func.func_defaults):
+            kwargs[kwarg_names[x]] = func.func_defaults[x]
+    else:
+        args = func.func_code.co_varnames[1:]
+    docstr = _parse_docstring(func.__doc__)
+    for argname in args:
+        s = ''
+        if argname in docstr['types']:
+            s = '(%s) ' % docstr['types'][argname]
+        if argname in docstr['params']:
+            s += docstr['params'][argname]
+        res[argname] = s
+    for argname, _default in kwargs.iteritems():
+        s = ''
+        if argname in docstr['types']:
+            s = '(%s) ' % docstr['types'][argname]
+        if argname in docstr['params']:
+            s += docstr['params'][argname]
+        res['%s=%s' % (argname, _default)] = s
+    return res
