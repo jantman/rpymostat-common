@@ -49,7 +49,7 @@ class SystemID(object):
     """
 
     # List of method names in this class to call when determining an ID
-    # in :py:meth:`.id_string`.
+    # in :py:method:`.id_string`.
     id_methods = [
         'raspberrypi_cpu',
         'uuid_getnode'
@@ -107,7 +107,7 @@ class SystemID(object):
         this is running on.
 
         Internally, this calls all method whose names are listed in
-        :py:const:`.id_methods`, in order, and returns the value of the first
+        :py:attr:`.id_methods`, in order, and returns the value of the first
         one that returned something other than None.
 
         :return: unique, never-changing system ID
@@ -173,10 +173,10 @@ class SystemID(object):
 
     def uuid_getnode(self):
         """
-        Determine this system's UUID via Python's :py:meth:`uuid.getnode` (slow)
+        Determine this system's UUID via Python's :py:func:`uuid.getnode` (slow)
         method.
 
-        :return: hardware system ID from Python's :py:meth:`uuid.getnode`
+        :return: hardware system ID from Python's :py:func:`uuid.getnode`
         :rtype: str
         """
         return 'uuid.getnode_%x' % uuid.getnode()
@@ -184,7 +184,7 @@ class SystemID(object):
     def random_fallback(self):
         """
         Generate a host ID using a random UUID via Python's
-        :py:meth:`uuid.uuid4`. Used as a fallback when the ID can't be
+        :py:func:`uuid.uuid4`. Used as a fallback when the ID can't be
         determined using any other method.
 
         :return: random UUID

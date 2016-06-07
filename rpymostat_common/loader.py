@@ -53,7 +53,7 @@ def load_classes(entrypoint_name, superclass=None):
     :type entrypoint_name: str
     :param superclass: if specified, restrict the return value to only
       subclasses of this class / classinfo
-    :type superclass: class or classinfo
+    :type superclass: ``class or classinfo``
     :return: list of loaded entrypoints (usually classes)
     :rtype: list
     """

@@ -1,7 +1,7 @@
-rpymostat-common
-===============
+rpymostat_common
+================
 
 .. toctree::
    :maxdepth: 4
 
-   rpymostat-common
+   rpymostat_common

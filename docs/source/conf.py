@@ -17,7 +17,7 @@ import os
 import re
 # to let sphinx find the actual source...
 sys.path.insert(0, os.path.abspath("../.."))
-from rpymostat-common.version import _VERSION
+from rpymostat_common.version import VERSION
 import sphinx.environment
 from docutils.utils import get_source_line
 
@@ -29,12 +29,12 @@ from docutils.utils import get_source_line
 is_rtd = os.environ.get('READTHEDOCS', None) != 'True'
 readthedocs_version = os.environ.get('READTHEDOCS_VERSION', '')
 
-rtd_version = _VERSION
+rtd_version = VERSION
 
 if (readthedocs_version in ['stable', 'latest', 'master'] or
     re.match(r'^\d+\.\d+\.\d+', readthedocs_version)):
     # this is a tag or stable/latest/master; show the actual version
-    rtd_version = _VERSION
+    rtd_version = VERSION
 
 # -- General configuration ------------------------------------------------
 
@@ -291,7 +291,7 @@ texinfo_documents = [
 
 # Example configuration for intersphinx: refer to the Python standard library.
 intersphinx_mapping = {
-    'https://docs.python.org/': None
+    'python': ('http://docs.python.org/2.7', None)
 }
 
 autoclass_content = 'class'
@@ -302,7 +302,8 @@ linkcheck_ignore = [
     r'https?://www\.virtualenv\.org.*',
     r'https?://.*\.readthedocs\.org.*',
     r'https?://codecov\.io.*',
-    r'https?://.*readthedocs\.org.*'
+    r'https?://.*readthedocs\.org.*',
+    r'https?://pypi\.python\.org.*'
 ]
 
 # exclude module docstrings - see http://stackoverflow.com/a/18031024/211734
@@ -311,7 +312,7 @@ def remove_module_docstring(app, what, name, obj, options, lines):
         del lines[:]
 
 # ignore non-local image warnings
-def _warn_node(self, msg, node):
+def _warn_node(self, msg, node, **kwargs):
     if not msg.startswith('nonlocal image URI found:'):
         self._warnfunc(msg, '%s:%s' % get_source_line(node))
 
