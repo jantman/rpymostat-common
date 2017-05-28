@@ -23,9 +23,9 @@ rpymostat-common
    :target: https://waffle.io/jantman/RPyMostat
    :alt: 'Stories in Ready - waffle.io'
 
-.. image:: http://www.repostatus.org/badges/0.1.0/active.svg
-   :alt: Project Status: Active - The project has reached a stable, usable state and is being actively developed.
-   :target: http://www.repostatus.org/#active
+.. image:: http://www.repostatus.org/badges/2.0.0/concept.svg
+   :alt: Project Status: Concept – Minimal or no implementation has been done yet, or the repository is only intended to be a limited example, demo, or proof-of-concept.
+   :target: http://www.repostatus.org/#concept
 
 Common libraries shared by packages in the `RPyMostat <https://github.com/jantman/RPyMostat>`_ project.
 
